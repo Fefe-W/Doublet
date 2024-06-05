@@ -32,7 +32,7 @@ New Features:
 
 ## Installation (in R/RStudio)
 
-remotes::install_github('chris-mcginnis-ucsf/DoubletFinder')
+remotes::install_github('Fefe-W/Doublet')
 
 ## Dependencies
 
@@ -144,18 +144,26 @@ bcmvn_kidney <- find.pK(sweep.stats_kidney)
 
 ## pK Identification (ground-truth) ------------------------------------------------------------------------------------------
 sweep.res.list_kidney <- paramSweep(seu_kidney, PCs = 1:10, sct = FALSE)
-gt.calls <- seu_kidney@meta.data[rownames(sweep.res.list_kidney[[1]]), "GT"].   ## GT is a vector containing "Singlet" and "Doublet" calls recorded using sample multiplexing classification and/or in silico geneotyping results 
+gt.calls <- seu_kidney@meta.data[rownames(sweep.res.list_kidney[[1]]), "GT"]   ## GT is a vector containing "Singlet" and "Doublet" calls recorded using sample multiplexing classification and/or in silico geneotyping results 
 sweep.stats_kidney <- summarizeSweep(sweep.res.list_kidney, GT = TRUE, GT.calls = gt.calls)
 bcmvn_kidney <- find.pK(sweep.stats_kidney)
+pK_bcmvn = as.numeric(bcmvn$pK[which.max(bcmvn$BCmetric)])
 
 ## Homotypic Doublet Proportion Estimate -------------------------------------------------------------------------------------
-homotypic.prop <- modelHomotypic(annotations)           ## ex: annotations <- seu_kidney@meta.data$ClusteringResults
+annotations <- seu_kidney@meta.data$seurat_clusters
+homotypic.prop <- modelHomotypic(annotations)           
 nExp_poi <- round(0.075*nrow(seu_kidney@meta.data))  ## Assuming 7.5% doublet formation rate - tailor for your dataset
 nExp_poi.adj <- round(nExp_poi*(1-homotypic.prop))
 
 ## Run DoubletFinder with varying classification stringencies ----------------------------------------------------------------
-seu_kidney <- doubletFinder(seu_kidney, PCs = 1:10, pN = 0.25, pK = 0.09, nExp = nExp_poi, reuse.pANN = FALSE, sct = FALSE)
-seu_kidney <- doubletFinder(seu_kidney, PCs = 1:10, pN = 0.25, pK = 0.09, nExp = nExp_poi.adj, reuse.pANN = "pANN_0.25_0.09_913", sct = FALSE)
+seu_kidney <- doubletFinder(seu_kidney, PCs = 1:10, pN = 0.25, pK = pK_bcmvn, nExp = nExp_poi.adj, reuse.pANN = FALSE, sct = T)
+#seu_kidney <- doubletFinder(seu_kidney, PCs = 1:10, pN = 0.25, pK = pK_bcmvn, nExp = nExp_poi.adj, reuse.pANN = "pANN_0.25_0.09_913", sct = T) ##pANN_0.25_0.09_913 is pN_pK_nExp_poi 
+
+##visualisation
+DimPlot(seu_kidney,reduction="umap",group.by = "DF.classifications_0.25_0.09_674",raster = F)
+
+##Doublet removal
+seu_kidney_singlet = subset(seu_kidney,subset=DF.classifications_0.25_0.09_674=="Singlet")
 ```
 
 ![alternativetext](DF.screenshots/DFkidney_low.vs.high.png)
